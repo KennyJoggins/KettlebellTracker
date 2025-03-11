@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kettlebell Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="card p-4 shadow-sm">
+            <h2 class="text-center">Kettlebell Tracker</h2>
+            <div class="mb-3">
+                <label for="weight" class="form-label">Enter Current Weight (lbs):</label>
+                <input type="number" id="weight" class="form-control" min="0">
+            </div>
+            
+            <h3 class="text-center">Workout Selection</h3>
+            <select id="workoutSelect" class="form-select mb-3" onchange="updateWorkoutLog()"></select>
+            
+            <h3 class="text-center">Workout Log</h3>
+            <div class="table-responsive">
+                <table class="table table-bordered text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Exercise</th>
+                            <th>Target Sets</th>
+                            <th>Sets</th>
+                            <th>Target Reps</th>
+                            <th>Reps</th>
+                            <th>Target Weight</th>
+                            <th>Weight</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workoutLog"></tbody>
+                </table>
+            </div>
+            
+            <button class="btn btn-success w-100" onclick="saveWorkout()">Save Workout</button>
+            
+            <h3 class="text-center mt-4">Last Workout</h3>
+            <div class="table-responsive">
+                <table class="table table-bordered text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Date</th>
+                            <th>Workout</th>
+                            <th>Body Weight</th>
+                            <th>Exercises</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history"></tbody>
+                </table>
+            </div>
+            
+            <h3 class="text-center mt-4">Rest Timer</h3>
+            <div class="text-center">
+                <span id="timerDisplay">00:00</span>
+                <button class="btn btn-warning" onclick="startTimer()">Start Rest</button>
+                <button class="btn btn-danger" onclick="stopTimer()">Stop</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let workouts = {
+            "Monday (Power & Strength)": [
+                { name: "Heavy Kettlebell Swings", targetSets: 5, targetReps: 15, targetWeight: 50, rest: 60 },
+                { name: "Double Kettlebell Front Squats", targetSets: 5, targetReps: 10, targetWeight: 40, rest: 90 },
+                { name: "Turkish Get-Ups", targetSets: 3, targetReps: 5, targetWeight: 30, rest: 90 },
+                { name: "Heavy Kettlebell Rows", targetSets: 4, targetReps: 8, targetWeight: 45, rest: 60 },
+                { name: "Farmers Carries", targetSets: 4, targetReps: 30, targetWeight: 50, rest: 60 }
+            ],
+            "Tuesday (Conditioning & Endurance)": [
+                { name: "One-Arm Kettlebell Swings", targetSets: 5, targetReps: 12, targetWeight: 40, rest: 60 },
+                { name: "Kettlebell Clean & Press", targetSets: 4, targetReps: 8, targetWeight: 35, rest: 90 },
+                { name: "Dead Stop Swings", targetSets: 4, targetReps: 10, targetWeight: 40, rest: 60 },
+                { name: "Kettlebell Snatches", targetSets: 3, targetReps: 8, targetWeight: 35, rest: 90 },
+                { name: "Suitcase Carries", targetSets: 3, targetReps: 30, targetWeight: 50, rest: 60 }
+            ],
+            "Thursday (Strength & Explosiveness)": [
+                { name: "Kettlebell Deadlifts", targetSets: 5, targetReps: 10, targetWeight: 80, rest: 90 },
+                { name: "Romanian Deadlifts", targetSets: 4, targetReps: 12, targetWeight: 60, rest: 90 },
+                { name: "Kettlebell Overhead Press", targetSets: 4, targetReps: 8, targetWeight: 45, rest: 90 },
+                { name: "Weighted Pull-Ups", targetSets: 4, targetReps: 6, targetWeight: 20, rest: 120 },
+                { name: "Double Kettlebell Swings", targetSets: 5, targetReps: 10, targetWeight: 50, rest: 60 }
+            ],
+            "Friday (Grip, Core & Finisher)": [
+                { name: "Kettlebell Suitcase Deadlifts", targetSets: 4, targetReps: 8, targetWeight: 50, rest: 90 },
+                { name: "Heavy Kettlebell Rows", targetSets: 5, targetReps: 8, targetWeight: 50, rest: 60 },
+                { name: "Turkish Get-Ups", targetSets: 3, targetReps: 5, targetWeight: 30, rest: 90 },
+                { name: "Kettlebell Thrusters", targetSets: 4, targetReps: 10, targetWeight: 40, rest: 90 }
+            ]
+        };
+
+        function populateWorkoutSelect() {
+            let workoutSelect = document.getElementById('workoutSelect');
+            workoutSelect.innerHTML = Object.keys(workouts).map(w => `<option value="${w}">${w}</option>`).join('');
+        }
+
+        function updateWorkoutLog() {
+            let workoutType = document.getElementById('workoutSelect').value;
+            let workoutLog = document.getElementById('workoutLog');
+            workoutLog.innerHTML = workouts[workoutType].map(ex => `
+                <tr>
+                    <td>${ex.name}</td>
+                    <td>${ex.targetSets}</td>
+                    <td><input type="number" class="form-control" min="0"></td>
+                    <td>${ex.targetReps}</td>
+                    <td><input type="number" class="form-control" min="0"></td>
+                    <td>${ex.targetWeight}</td>
+                    <td><input type="number" class="form-control" min="0"></td>
+                </tr>`).join('');
+        }
+
+        function saveWorkout() {
+            let weight = document.getElementById('weight').value;
+            let date = new Date().toLocaleDateString();
+            let workoutType = document.getElementById('workoutSelect').value;
+            let history = JSON.parse(localStorage.getItem('history')) || [];
+            let workoutLog = document.getElementById('workoutLog').querySelectorAll('tr');
+
+            let exercises = [];
+            workoutLog.forEach(row => {
+                let cells = row.getElementsByTagName('td');
+                exercises.push({
+                    name: cells[0].innerText,
+                    sets: cells[2].querySelector('input').value,
+                    reps: cells[4].querySelector('input').value,
+                    weight: cells[6].querySelector('input').value
+                });
+            });
+
+            history.unshift({ date, workout: workoutType, weight, exercises });
+            localStorage.setItem('history', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            let history = JSON.parse(localStorage.getItem('history')) || [];
+            let historyTable = document.getElementById('history');
+            historyTable.innerHTML = history.length ? `<tr>
+                <td>${history[0].date}</td>
+                <td>${history[0].workout}</td>
+                <td>${history[0].weight} lbs</td>
+                <td>${history[0].exercises.map(ex => `${ex.name}: ${ex.sets}x${ex.reps} @ ${ex.weight} lbs`).join('<br>')}</td>
+            </tr>` : '';
+        }
+
+        let timer;
+        function startTimer() {
+            let restTime = workouts[document.getElementById('workoutSelect').value][0].rest;
+            let time = restTime;
+            document.getElementById('timerDisplay').textContent = `${Math.floor(time / 60)}:${String(time % 60).padStart(2, '0')}`;
+            timer = setInterval(() => {
+                if (time > 0) {
+                    time--;
+                    document.getElementById('timerDisplay').textContent = `${Math.floor(time / 60)}:${String(time % 60).padStart(2, '0')}`;
+                } else {
+                    clearInterval(timer);
+                }
+            }, 1000);
+        }
+        function stopTimer() { clearInterval(timer); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateWorkoutSelect();
+            updateWorkoutLog();
+            loadHistory();
+        });
+    </script>
+</body>
+</html>
